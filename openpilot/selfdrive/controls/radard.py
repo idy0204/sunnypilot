@@ -12,6 +12,7 @@ from openpilot.common.params import Params
 from openpilot.common.realtime import DT_MDL, Priority, config_realtime_process
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.simple_kalman import KF1D
+from openpilot.selfdrive.controls.lib.lead_gap_offset import read_lead_gap_offset
 
 from opendbc.car import structs
 from opendbc.car.hyundai.values import HyundaiFlags
@@ -28,6 +29,10 @@ SPEED, ACCEL = 0, 1     # Kalman filter states enum
 V_EGO_STATIONARY = 4.   # no stationary object flag below this speed
 
 RADAR_TO_CAMERA = 1.52  # RADAR is ~ 1.5m ahead from center of mesh frame
+
+# extra gap to the vision lead (GV70: camera sits further back than RADAR_TO_CAMERA assumes).
+# read once per drive since radard only runs onroad, so a UI change takes effect on the next drive
+LEAD_GAP_OFFSET = read_lead_gap_offset()
 
 
 class KalmanParams:
@@ -140,7 +145,7 @@ def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader, tracks
 def get_RadarState_from_vision(lead_msg: capnp._DynamicStructReader, v_ego: float, model_v_ego: float, lead_prob: float):
   lead_v_rel_pred = lead_msg.v[0] - model_v_ego
   return {
-    "dRel": float(lead_msg.x[0] - RADAR_TO_CAMERA - 1.0),
+    "dRel": float(lead_msg.x[0] - RADAR_TO_CAMERA - LEAD_GAP_OFFSET),
     "yRel": float(-lead_msg.y[0]),
     "vRel": float(lead_v_rel_pred),
     "vLead": float(v_ego + lead_v_rel_pred),
