@@ -15,6 +15,7 @@ from openpilot.common.realtime import DT_MDL
 from openpilot.sunnypilot import PARAMS_UPDATE_PERIOD, get_sanitize_int_param
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit import LIMIT_MAX_MAP_DATA_AGE, LIMIT_ADAPT_ACC
 from openpilot.sunnypilot.selfdrive.controls.lib.speed_limit.common import Policy, OffsetType
+from openpilot.selfdrive.controls.lib.speed_limit_tier import read_speed_limit_tier
 
 SpeedLimitSource = custom.LongitudinalPlanSP.SpeedLimit.Source
 
@@ -67,6 +68,7 @@ class SpeedLimitResolver:
       self.params
     )
     self.offset_value = self.params.get("SpeedLimitValueOffset", return_default=True)
+    self.tier_enabled = read_speed_limit_tier()
 
     self.speed_limit = 0.
     self.speed_limit_last = 0.
@@ -95,6 +97,7 @@ class SpeedLimitResolver:
       self.is_metric = self.params.get_bool("IsMetric")
       self.offset_type = self.params.get("SpeedLimitOffsetType", return_default=True)
       self.offset_value = self.params.get("SpeedLimitValueOffset", return_default=True)
+      self.tier_enabled = read_speed_limit_tier()
 
   def _get_speed_limit_offset(self) -> float:
     if self.offset_type == OffsetType.off:
@@ -102,7 +105,7 @@ class SpeedLimitResolver:
     elif self.offset_type == OffsetType.fixed:
       offset = self.offset_value
       # GV70: +10 mph on 55 mph+ limits (0.5 mph margin for map values like 54.9), the set value below that
-      if not self.is_metric and self.speed_limit >= 54.5 * CV.MPH_TO_MS:
+      if self.tier_enabled and not self.is_metric and self.speed_limit >= 54.5 * CV.MPH_TO_MS:
         offset = 10
       return float(offset * (CV.KPH_TO_MS if self.is_metric else CV.MPH_TO_MS))
     elif self.offset_type == OffsetType.percentage:

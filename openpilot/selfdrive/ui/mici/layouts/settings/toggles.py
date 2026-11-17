@@ -7,6 +7,7 @@ from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callba
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.selfdrive.ui.mici.layouts.settings.initial_cruise_speed import InitialCruiseSpeedButton
 from openpilot.selfdrive.ui.mici.layouts.settings.lead_gap import LeadGapButton
+from openpilot.selfdrive.controls.lib.speed_limit_tier import read_speed_limit_tier, write_speed_limit_tier
 
 PERSONALITY_TO_INT = log.LongitudinalPersonality.schema.enumerants
 
@@ -24,6 +25,11 @@ class TogglesLayoutMici(NavScroller):
     self._initial_cruise_speed.set_visible(lambda: ui_state.CP is not None and ui_state.has_longitudinal_control and not ui_state.CP.pcmCruise)
     self._lead_gap = LeadGapButton()
     self._lead_gap.set_visible(lambda: ui_state.CP is not None and ui_state.has_longitudinal_control)
+    self._speed_limit_tier = BigToggle("+10 mph at 55+ limits", initial_state=read_speed_limit_tier(), toggle_callback=write_speed_limit_tier,
+                                       description="On: +10 mph when the speed limit is 55 mph or more.\n" +
+                                                   "Below 55 mph, and when off, the Fixed speed limit offset is used.\n" +
+                                                   "Applies within a few seconds.")
+    self._speed_limit_tier.set_visible(lambda: ui_state.CP is not None and ui_state.has_longitudinal_control)
     is_metric_toggle = BigToggle("use metric units", initial_state=ui_state.params.get_bool("IsMetric"), toggle_callback=self._on_metric_toggle)
     ldw_toggle = BigParamControl("lane departure warnings", "IsLdwEnabled",
                                  description="Warn when you drift across a detected lane line.\n" +
@@ -44,6 +50,7 @@ class TogglesLayoutMici(NavScroller):
     self._scroller.add_widgets([
       self._personality_toggle,
       self._lead_gap,
+      self._speed_limit_tier,
       self._initial_cruise_speed,
       is_metric_toggle,
       ldw_toggle,
@@ -94,6 +101,7 @@ class TogglesLayoutMici(NavScroller):
     ui_state.update_params()
     self._initial_cruise_speed.refresh()
     self._lead_gap.refresh()
+    self._speed_limit_tier.set_checked(read_speed_limit_tier())
 
     if ui_state.CP is not None:
       self._personality_toggle.set_visible(ui_state.has_longitudinal_control)
