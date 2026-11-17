@@ -100,7 +100,11 @@ class SpeedLimitResolver:
     if self.offset_type == OffsetType.off:
       return 0
     elif self.offset_type == OffsetType.fixed:
-      return float(self.offset_value * (CV.KPH_TO_MS if self.is_metric else CV.MPH_TO_MS))
+      offset = self.offset_value
+      # GV70: +10 mph on 55 mph+ limits (0.5 mph margin for map values like 54.9), the set value below that
+      if not self.is_metric and self.speed_limit >= 54.5 * CV.MPH_TO_MS:
+        offset = 10
+      return float(offset * (CV.KPH_TO_MS if self.is_metric else CV.MPH_TO_MS))
     elif self.offset_type == OffsetType.percentage:
       return float(self.offset_value * 0.01 * self.speed_limit)
     else:
